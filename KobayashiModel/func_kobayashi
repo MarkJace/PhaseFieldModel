@@ -1,0 +1,216 @@
+# func_kobayashi.py
+
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+def kobayashi_simulation(
+    # 可调控参数（带默认值，与 full_kobayashi.py 一致）
+    tsimu=3000,
+    toutput=100,
+    tau=1e-4,
+    aniso=6,
+    ang0=0.0,
+    eps=0.01,
+    delta=0.02,
+    alpha=0.8,
+    gamma=50.0,
+    K=1.8,
+    # 网格参数（可选修改）
+    Lx=100,
+    Ly=100,
+    dx=1.0,
+    dy=1.0,
+    dt=1e-5,
+    # 初始晶核参数（可选修改）
+    radius=5,
+    width=1.2,
+    Te=1.0,
+    # 边界温度（可选修改）
+    boundary_temp=0.0,
+    # 输出目录（可选修改）
+    output_dir=None
+):
+    """
+    Kobayashi 模型相场法模拟函数
+    
+    参数:
+        tsimu (int): 总模拟时间步数
+        toutput (int): 输出间隔步数
+        tau (float): 相场演化时间常数
+        aniso (int): 各向异性模数
+        ang0 (float): 晶体初始取向角
+        eps (float): 界面梯度能量系数
+        delta (float): 各向异性强度
+        alpha (float): 过冷度耦合系数
+        gamma (float): 温度响应曲率系数
+        K (float): 无量纲潜热系数
+        Lx, Ly (int): 网格尺寸
+        dx, dy (float): 空间步长
+        dt (float): 时间步长
+        radius (float): 初始晶核半径
+        width (float): 初始界面过渡区宽度
+        Te (float): 平衡温度
+        boundary_temp (float): 边界固定温度
+        output_dir (str/Path): 输出目录路径，默认在当前目录下创建 simu_results
+        
+    返回:
+        p (ndarray): 最终相场
+        T (ndarray): 最终温度场
+    """
+    
+    # 初始化相场和温度场
+    p = np.zeros((Lx, Ly), dtype=float)
+    T = np.zeros((Lx, Ly), dtype=float)
+    
+    # 初始球形晶核（光滑界面）
+    cx, cy = Lx // 2, Ly // 2
+    x_coords = np.arange(Lx)
+    y_coords = np.arange(Ly)
+    X, Y = np.meshgrid(x_coords, y_coords, indexing='ij')
+    r = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2)
+    p = 0.5 * (1.0 - np.tanh((r - radius) / width))
+    
+    # 设置输出目录
+    if output_dir is None:
+        output_dir = Path.cwd() / "simu_results"
+    else:
+        output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+    
+    # 打印模拟信息
+    print("Starting Kobayashi model simulation...")
+    print(f"Grid: {Lx}x{Ly}, Time steps: {tsimu}, dt = {dt}")
+    print(f"Parameters: tau={tau}, aniso={aniso}, eps={eps}, delta={delta}")
+    print(f"            alpha={alpha}, gamma={gamma}, K={K}")
+    print(f"Output interval: {toutput}")
+    print(f"Output directory: {output_dir}")
+    
+    # 主模拟循环
+    for step in range(tsimu):
+        # 1. 计算相场梯度
+        px = np.zeros_like(p)
+        px[1:-1, :] = (p[2:, :] - p[:-2, :]) / (2 * dx)
+        px[0, :] = (p[1, :] - p[0, :]) / dx
+        px[-1, :] = (p[-1, :] - p[-2, :]) / dx
+        
+        py = np.zeros_like(p)
+        py[:, 1:-1] = (p[:, 2:] - p[:, :-2]) / (2 * dy)
+        py[:, 0] = (p[:, 1] - p[:, 0]) / dy
+        py[:, -1] = (p[:, -1] - p[:, -2]) / dy
+        
+        # 2. 计算各向异性函数
+        theta = np.arctan2(Y - cy, X - cx)
+        a_theta = 1.0 + delta * np.cos(aniso * (theta - ang0))
+        a_sq = a_theta ** 2
+        
+        # 3. 计算各向异性扩散项的散度
+        a2_px = a_sq * px
+        a2_py = a_sq * py
+        
+        div_a2_grad_p = np.zeros_like(p)
+        div_a2_grad_p[1:-1, :] = (a2_px[2:, :] - a2_px[:-2, :]) / (2 * dx)
+        div_a2_grad_p[0, :] = (a2_px[1, :] - a2_px[0, :]) / dx
+        div_a2_grad_p[-1, :] = (a2_px[-1, :] - a2_px[-2, :]) / dx
+        div_a2_grad_p[:, 1:-1] += (a2_py[:, 2:] - a2_py[:, :-2]) / (2 * dy)
+        div_a2_grad_p[:, 0] += (a2_py[:, 1] - a2_py[:, 0]) / dy
+        div_a2_grad_p[:, -1] += (a2_py[:, -1] - a2_py[:, -2]) / dy
+        
+        # 4. 计算交叉项（完整各向异性算子）
+        deps_dtheta = -delta * aniso * np.sin(aniso * (theta - ang0))
+        eps_eps_prime = a_theta * deps_dtheta
+        
+        x_term = np.zeros_like(p)
+        y_term = np.zeros_like(p)
+        
+        x_term[1:-1, :] = (eps_eps_prime[2:, :] * py[2:, :] - 
+                          eps_eps_prime[:-2, :] * py[:-2, :]) / (2 * dx)
+        x_term[0, :] = (eps_eps_prime[1, :] * py[1, :] - 
+                       eps_eps_prime[0, :] * py[0, :]) / dx
+        x_term[-1, :] = (eps_eps_prime[-1, :] * py[-1, :] - 
+                        eps_eps_prime[-2, :] * py[-2, :]) / dx
+        
+        y_term[:, 1:-1] = (eps_eps_prime[:, 2:] * px[:, 2:] - 
+                          eps_eps_prime[:, :-2] * px[:, :-2]) / (2 * dy)
+        y_term[:, 0] = (eps_eps_prime[:, 1] * px[:, 1] - 
+                       eps_eps_prime[:, 0] * px[:, 0]) / dy
+        y_term[:, -1] = (eps_eps_prime[:, -1] * px[:, -1] - 
+                        eps_eps_prime[:, -2] * px[:, -2]) / dy
+        
+        # 5. 计算过冷度项
+        m = alpha * np.tanh(gamma * (Te - T))
+        
+        # 6. 相场方程右端项
+        rhs_phi = (eps ** 2 * div_a2_grad_p - x_term + y_term + 
+                   p * (1.0 - p) * (p - 0.5 + m))
+        
+        # 7. 相场演化
+        p_new = p + (dt / tau) * rhs_phi
+        p_new = np.clip(p_new, 0.0, 1.0)
+        
+        # 8. 温度场演化
+        laplacian_T = (
+            np.roll(T, 1, axis=0) + np.roll(T, -1, axis=0) +
+            np.roll(T, 1, axis=1) + np.roll(T, -1, axis=1) - 4 * T
+        ) / (dx * dy)
+        
+        dphi_dt = (p_new - p) / dt
+        T_new = T + dt * (laplacian_T + K * dphi_dt)
+        
+        # 边界条件
+        T_new[0, :] = boundary_temp
+        T_new[-1, :] = boundary_temp
+        T_new[:, 0] = boundary_temp
+        T_new[:, -1] = boundary_temp
+        
+        p = p_new
+        T = T_new
+        
+        # 9. 输出和可视化
+        if step % toutput == 0:
+            elapsed = step / tsimu * 100
+            solid_fraction = np.mean(p > 0.5) * 100
+            print(f"Step {step:6d}/{tsimu} ({elapsed:5.1f}%) | "
+                  f"Solid fraction: {solid_fraction:5.2f}% | "
+                  f"p range: [{p.min():.3f}, {p.max():.3f}]")
+            
+            fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+            im1 = axes[0].imshow(p, cmap='hot', origin='lower', vmin=0, vmax=1)
+            axes[0].set_title(f'Phase Field (Step {step})')
+            axes[0].set_xlabel('x')
+            axes[0].set_ylabel('y')
+            plt.colorbar(im1, ax=axes[0])
+            
+            im2 = axes[1].imshow(T, cmap='coolwarm', origin='lower')
+            axes[1].set_title(f'Temperature (Step {step})')
+            axes[1].set_xlabel('x')
+            axes[1].set_ylabel('y')
+            plt.colorbar(im2, ax=axes[1])
+            
+            plt.tight_layout()
+            plt.savefig(output_dir / f'simu_step_{step:06d}.png', dpi=100)
+            plt.close()
+            
+            print(f"  -> Saved {output_dir / f'simu_step_{step:06d}.png'}")
+    
+    print("Simulation completed!")
+    return p, T
+
+
+# ============ 使用示例 ============
+if __name__ == "__main__":
+    # 使用默认参数运行
+    p_final, T_final = kobayashi_simulation()
+    
+    # 也可以自定义参数运行：
+    # p_final, T_final = kobayashi_simulation(
+    #     tsimu=5000,
+    #     toutput=200,
+    #     tau=1e-4,
+    #     aniso=6,
+    #     eps=0.05,
+    #     delta=0.1,
+    #     alpha=0.5,
+    #     gamma=10.0,
+    #     K=2.0
+    # )
