@@ -1,2 +1,9 @@
 proj_env/
+.agents
+.aws
+.codex
+.vscode
+.pycache
+*.npz
+*.csv
 

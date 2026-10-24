@@ -26,6 +26,16 @@ Here a Kobayashi model is applied to simulate the dendrite growth.
 The model refers to the paper "Modeling and numerical simulations of dendritic crystal growth"(https://doi.org/10.1016/0167-2789(93)90120-P).
 The dentrite growth process and temperature evolution are achieved by the program.
 
+# Phase Field Crystal Model
+The script simulates the formation of an ordered phase from a mother phase.
+
+
+# Phase Field Fracture Model
+Here the fracture case is simulated by Phase Field Facture Model.
+The script simulates a 2D material block with an initial crack.
+
+
+
 
 
 
