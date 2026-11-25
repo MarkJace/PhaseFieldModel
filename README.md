@@ -19,7 +19,7 @@ $$∂c/∂t = ∇·(M∇μ) = M·∇²[f'(c)] - Mκ·∇⁴c$$
 Here the equation is solved by spectrum method.
 
 ## Ferroelectricity in Polycrystal
-
+In 
 
 
 ## Ferroelectricity in Single Crystal
