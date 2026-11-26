@@ -1,6 +1,5 @@
 # PhaseFieldModel
 A examples repository for phase field model.
-
 Here is the index of the repository. The detailed information is included in the directories of the cases (document.md).
 
 ## For this repository
@@ -11,19 +10,14 @@ The programs are achieved by python3. The needed modules is in requirements.txt
 
 ## Cahh-Hillard
 Cahn-Hillard model in Phase field simulation.
-It simulates the compositional evolution (conserved fields).
-In the model, the free energy functional is
-$$F[c] = ∫_V [ A·c²(1-c)² + (κ/2)·|∇c|² ] dV$$
-The Cahn-Hillard equation:
-$$∂c/∂t = ∇·(M∇μ) = M·∇²[f'(c)] - Mκ·∇⁴c$$
-Here the equation is solved by spectrum method.
+It simulates the compositional evolution (spinodal decomposition).
 
 ## Ferroelectricity in Polycrystal
 In 
 
 
 ## Ferroelectricity in Single Crystal
-In a stress-free, uniaxially polarized ferroelectric single crystal,
+
 
 
 
@@ -39,9 +33,7 @@ $$dη_i/dt = L_i [ A·η_i - B·η_i^3 - 2η_i·Σ_{j≠i} η_j^2 + κ_i·∇²�
 The initial structure is obtained by Voronoi structure.
 
 # Kobayashi Model
-Here a Kobayashi model is applied to simulate the dendrite growth.
-The model refers to the paper "Modeling and numerical simulations of dendritic crystal growth"(https://doi.org/10.1016/0167-2789(93)90120-P).
-The dentrite growth process and temperature evolution are achieved by the program.
+Kobayashi model to simulate the dendrite growth under temperature gradient during solidification.
 
 ## Li Ion Battery Dendrite formation
 
@@ -51,12 +43,10 @@ The dentrite growth process and temperature evolution are achieved by the progra
 
 
 # Phase Field Crystal Model
-The script simulates the formation of an ordered phase from a mother phase.
-
+Phase field crystal model to simulate the formation of an ordered phase from a mother phase.
 
 # Phase Field Fracture Model
-Here the fracture case is simulated by Phase Field Facture Model.
-The script simulates a 2D material block with an initial crack.
+A 2D phase field facture model to simulate the fracture process of a 2d material block with an initial crack.
 
 
 
